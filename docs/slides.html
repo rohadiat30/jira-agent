@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jira → Kiro Watcher</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/monokai.css" />
+    <style>
+      :root {
+        --bg0: #070b16;
+        --bg1: #0c1224;
+        --card: rgba(255, 255, 255, 0.045);
+        --card-brd: rgba(255, 255, 255, 0.10);
+        --ink: #eaf0fb;
+        --muted: #93a1bd;
+        --accent: #5b8cff;
+        --accent2: #a855f7;
+        --cyan: #22d3ee;
+        --green: #34d399;
+        --amber: #fbbf24;
+        --pink: #f472b6;
+      }
+
+      /* ---------- Animated particle canvas ---------- */
+      #bg-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+      .reveal-viewport {
+        background:
+          radial-gradient(1200px 760px at 10% -10%, rgba(91,140,255,0.20), transparent 60%),
+          radial-gradient(1000px 640px at 100% 0%, rgba(168,85,247,0.18), transparent 55%),
+          radial-gradient(900px 720px at 50% 120%, rgba(34,211,238,0.12), transparent 60%),
+          linear-gradient(160deg, var(--bg0), var(--bg1));
+      }
+      .reveal { position: relative; z-index: 1; }
+
+      /* ---------- Base ---------- */
+      .reveal { font-family: "Inter", system-ui, sans-serif; color: var(--ink); }
+      .reveal .slides { text-align: left; }
+      /* Konten rata atas dengan jarak nyaman (tidak mepet) */
+      .reveal .slides > section,
+      .reveal .slides > section > section {
+        display: flex !important;
+        flex-direction: column;
+        justify-content: flex-start;
+        height: 100%;
+        box-sizing: border-box;
+        padding: 6% 2vw 3%;
+      }
+      /* Slide cover & divider tetap di tengah */
+      .reveal .slides > section:has(.cover),
+      .reveal .slides > section:has(> h1) { justify-content: center; }
+
+      .reveal h1, .reveal h2, .reveal h3 {
+        font-family: "Sora", sans-serif; font-weight: 800; letter-spacing: -0.02em;
+        text-transform: none; line-height: 1.1; color: var(--ink);
+      }
+      .reveal h1 { font-size: 2.9em; }
+      .reveal h2 { font-size: 2em; margin-bottom: 0.6em; }
+      .reveal h3 { font-weight: 600; }
+      .reveal p, .reveal li { font-size: 1.02em; color: var(--ink); }
+      .reveal em { color: var(--cyan); font-style: normal; font-weight: 700; }
+      .reveal strong { color: #fff; }
+      .reveal a { color: var(--accent); }
+
+      /* animated gradient text */
+      .grad {
+        background: linear-gradient(100deg, #6ea0ff, #a855f7 40%, #22d3ee 80%);
+        background-size: 200% auto;
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: shimmer 6s linear infinite;
+      }
+      @keyframes shimmer { to { background-position: 200% center; } }
+
+      /* heading entrance */
+      .reveal .slides section.present h1,
+      .reveal .slides section.present h2 { animation: rise 0.6s cubic-bezier(.2,.7,.2,1) both; }
+      @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+
+      /* ---------- eyebrow ---------- */
+      .eyebrow {
+        display: inline-flex; align-items: center; gap: 10px;
+        font-family: "JetBrains Mono", monospace; font-size: 0.5em; color: var(--muted);
+        text-transform: uppercase; letter-spacing: 0.18em; border: 1px solid var(--card-brd);
+        border-radius: 999px; padding: 6px 14px; margin-bottom: 22px; background: var(--card);
+        backdrop-filter: blur(8px);
+      }
+      .eyebrow .dot { width: 8px; height: 8px; border-radius: 50%;
+        background: linear-gradient(120deg, var(--accent), var(--cyan));
+        box-shadow: 0 0 12px var(--accent); animation: pulse 2s ease-in-out infinite; }
+      @keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: .6; } }
+
+      /* ---------- lists ---------- */
+      .reveal ul { list-style: none; margin-left: 0; }
+      .reveal ul li { position: relative; padding-left: 30px; margin: 0.55em 0; }
+      .reveal ul li::before {
+        content: ""; position: absolute; left: 4px; top: 0.5em; width: 10px; height: 10px;
+        border-radius: 3px; background: linear-gradient(120deg, var(--accent), var(--accent2));
+        box-shadow: 0 0 12px rgba(91,140,255,0.7);
+      }
+      .reveal ol { margin-left: 1.1em; }
+      .reveal ol li { margin: 0.5em 0; }
+      .reveal ol li::marker { color: var(--cyan); font-family: "JetBrains Mono", monospace; font-weight: 700; }
+
+      /* ---------- cards ---------- */
+      .cards { display: grid; gap: 18px; margin-top: 12px; }
+      .cards.c2 { grid-template-columns: repeat(2, 1fr); }
+      .cards.c3 { grid-template-columns: repeat(3, 1fr); }
+      .card {
+        position: relative; overflow: hidden; background: var(--card);
+        border: 1px solid var(--card-brd); border-radius: 16px; padding: 20px 22px;
+        backdrop-filter: blur(8px); transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+      }
+      .card::after {
+        content: ""; position: absolute; top: 0; left: -120%; width: 60%; height: 100%;
+        background: linear-gradient(100deg, transparent, rgba(255,255,255,0.10), transparent);
+        transform: skewX(-18deg); transition: left .6s ease;
+      }
+      .card:hover { transform: translateY(-6px); border-color: rgba(91,140,255,0.45);
+        box-shadow: 0 24px 60px -24px rgba(91,140,255,0.55); }
+      .card:hover::after { left: 130%; }
+      .card .ic { font-size: 2em; margin-bottom: 10px; display: block;
+        filter: drop-shadow(0 4px 14px rgba(91,140,255,0.5)); }
+      .card h3 { font-size: 1.1em; margin: 0 0 8px; }
+      .card p { font-size: 0.84em; color: var(--muted); margin: 0; }
+      .card.accent { border-color: rgba(91,140,255,0.4);
+        box-shadow: 0 0 0 1px rgba(91,140,255,0.15), 0 18px 50px -20px rgba(91,140,255,0.5); }
+
+      /* ---------- tables ---------- */
+      .reveal table { font-size: 0.8em; border-collapse: separate; border-spacing: 0; width: 100%; }
+      .reveal table th, .reveal table td { border: none; padding: 14px 18px; }
+      .reveal table thead th {
+        background: linear-gradient(120deg, rgba(91,140,255,0.24), rgba(168,85,247,0.20));
+        color: #fff; text-align: left; font-family: "Sora", sans-serif; font-weight: 700;
+      }
+      .reveal table thead th:first-child { border-top-left-radius: 12px; }
+      .reveal table thead th:last-child { border-top-right-radius: 12px; }
+      .reveal table tbody tr { background: var(--card); transition: background .2s; }
+      .reveal table tbody tr:hover { background: rgba(91,140,255,0.10); }
+      .reveal table tbody td { border-bottom: 1px solid var(--card-brd); }
+
+      /* ---------- code ---------- */
+      .reveal pre { width: 100%; box-shadow: 0 24px 70px -28px rgba(0,0,0,0.85);
+        border: 1px solid var(--card-brd); border-radius: 14px; background: #0a1020; }
+      .reveal pre::before {
+        content: "● ● ●"; display: block; color: #33405e; font-size: 0.5em; letter-spacing: 3px;
+        padding: 10px 16px 0 18px; font-family: "JetBrains Mono", monospace;
+      }
+      .reveal pre code { font-family: "JetBrains Mono", monospace; font-size: 0.56em; line-height: 1.5;
+        padding: 12px 22px 20px; max-height: 480px; border-radius: 0 0 14px 14px; background: #0a1020; }
+
+      /* ---------- callout ---------- */
+      .reveal blockquote { width: auto; border: none; border-left: 3px solid var(--cyan);
+        background: linear-gradient(100deg, rgba(34,211,238,0.12), rgba(34,211,238,0));
+        padding: 14px 20px; border-radius: 0 12px 12px 0; font-size: 0.8em; color: var(--ink);
+        box-shadow: none; font-style: normal; }
+      .reveal blockquote strong { color: var(--cyan); }
+
+      /* ---------- cover ---------- */
+      .cover { text-align: center; }
+      .cover .kicker { font-family: "JetBrains Mono", monospace; color: var(--muted);
+        letter-spacing: 0.32em; text-transform: uppercase; font-size: 0.5em; }
+      .cover h1 { font-size: 3.3em; margin: 18px 0 10px; }
+      .cover .sub { color: var(--muted); font-size: 0.95em; font-weight: 500; }
+      .logo-orbit { width: 120px; height: 120px; margin: 0 auto 6px; position: relative; }
+      .logo-orbit .core { position: absolute; inset: 38px; border-radius: 50%;
+        background: radial-gradient(circle at 35% 30%, #7ea6ff, #5b8cff 45%, #3b5bdb);
+        box-shadow: 0 0 40px rgba(91,140,255,0.8); }
+      .logo-orbit .ring { position: absolute; inset: 0; border-radius: 50%;
+        border: 1.5px solid rgba(91,140,255,0.35); }
+      .logo-orbit .ring.r2 { inset: 14px; border-color: rgba(168,85,247,0.35);
+        border-style: dashed; animation: spin 8s linear infinite; }
+      .logo-orbit .sat { position: absolute; top: -4px; left: 50%; width: 12px; height: 12px;
+        margin-left: -6px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 16px var(--cyan);
+        transform-origin: 6px 64px; animation: spin 5s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .pill { display: inline-block; margin-top: 10px; font-family: "JetBrains Mono", monospace;
+        font-size: 0.62em; color: var(--ink); background: var(--card);
+        border: 1px solid var(--card-brd); border-radius: 999px; padding: 8px 18px; }
+      .presenter { margin-top: 24px; color: var(--muted); font-size: 0.7em; }
+
+      /* ---------- stats ---------- */
+      .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 8px; }
+      .stat { text-align: center; background: var(--card); border: 1px solid var(--card-brd);
+        border-radius: 16px; padding: 24px 18px; }
+      .stat .n { font-family: "Sora", sans-serif; font-weight: 800; font-size: 2.1em; }
+      .stat .n.grad { display: inline-block; }
+      .stat .l { color: var(--muted); font-size: 0.58em; margin-top: 6px;
+        text-transform: uppercase; letter-spacing: 0.12em; }
+
+      /* ---------- steps ---------- */
+      .steps { display: flex; flex-direction: column; gap: 10px; }
+      .step { display: flex; align-items: center; gap: 14px; background: var(--card);
+        border: 1px solid var(--card-brd); border-radius: 12px; padding: 14px 18px; font-size: 0.95em;
+        transition: transform .25s, border-color .25s; }
+      .step:hover { transform: translateX(6px); border-color: rgba(34,211,238,0.4); }
+      .step .num { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 9px; display: grid;
+        place-items: center; font-family: "JetBrains Mono", monospace; font-weight: 700;
+        background: linear-gradient(120deg, rgba(91,140,255,0.3), rgba(168,85,247,0.3)); color: #fff; }
+
+      /* ---------- flow diagram ---------- */
+      .flow { display: flex; align-items: stretch; justify-content: center; gap: 0; margin-top: 10px; }
+      .flow-node {
+        position: relative; flex: 1 1 0; max-width: 280px; background: var(--card);
+        border: 1px solid var(--card-brd); border-radius: 18px; padding: 22px 18px; text-align: center;
+        backdrop-filter: blur(8px); transition: transform .3s, box-shadow .3s, border-color .3s;
+      }
+      .flow-node:hover { transform: translateY(-6px); }
+      .flow-node .fic {
+        width: 58px; height: 58px; margin: 0 auto 12px; border-radius: 16px; display: grid; place-items: center;
+        font-size: 1.7em; background: linear-gradient(135deg, rgba(91,140,255,0.28), rgba(168,85,247,0.24));
+        border: 1px solid var(--card-brd);
+      }
+      .flow-node .ft { font-family: "Sora", sans-serif; font-weight: 700; font-size: 0.95em; margin-bottom: 6px; }
+      .flow-node .fd { font-size: 0.72em; color: var(--muted); line-height: 1.4; }
+      .flow-node.n-jira { border-color: rgba(34,211,238,0.4); box-shadow: 0 18px 50px -22px rgba(34,211,238,0.5); }
+      .flow-node.n-watch { border-color: rgba(91,140,255,0.45); box-shadow: 0 18px 50px -22px rgba(91,140,255,0.55); }
+      .flow-node.n-repo { border-color: rgba(52,211,153,0.4); box-shadow: 0 18px 50px -22px rgba(52,211,153,0.5); }
+      .flow-node.n-kiro { border-color: rgba(168,85,247,0.45); box-shadow: 0 18px 50px -22px rgba(168,85,247,0.55); }
+      .flow-conn { flex: 0 0 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+      .flow-conn .lbl { font-family: "JetBrains Mono", monospace; font-size: 0.5em; color: var(--muted); white-space: nowrap; }
+      .flow-conn .arrow {
+        width: 100%; height: 3px; border-radius: 3px; position: relative;
+        background: linear-gradient(90deg, rgba(120,160,255,0.25), rgba(120,160,255,0.9));
+      }
+      .flow-conn .arrow::after {
+        content: ""; position: absolute; right: -2px; top: 50%; transform: translateY(-50%);
+        border-left: 9px solid rgba(120,160,255,0.95); border-top: 6px solid transparent; border-bottom: 6px solid transparent;
+      }
+      .flow-conn .arrow .pulse {
+        position: absolute; top: 50%; left: 0; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%;
+        background: #fff; box-shadow: 0 0 12px #7ea6ff; animation: flow-move 2.2s linear infinite;
+      }
+      @keyframes flow-move { from { left: 0; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } to { left: 100%; opacity: 0; } }
+      .flow-caption { text-align: center; margin-top: 22px; }
+      .flow-caption .chip { display: inline-flex; align-items: center; gap: 8px; font-family: "JetBrains Mono", monospace;
+        font-size: 0.6em; color: var(--muted); background: var(--card); border: 1px dashed var(--card-brd);
+        border-radius: 999px; padding: 8px 16px; }
+
+      /* ---------- chrome ---------- */
+      .reveal .progress { color: var(--accent); height: 4px; }
+      .reveal .slide-number { background: transparent; color: var(--muted); font-family: "JetBrains Mono", monospace; }
+      .brand-footer { position: fixed; bottom: 14px; left: 22px; z-index: 30;
+        font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--muted);
+        display: flex; align-items: center; gap: 8px; }
+      .brand-footer .badge { width: 7px; height: 7px; border-radius: 50%;
+        background: linear-gradient(120deg, var(--accent), var(--cyan)); box-shadow: 0 0 10px var(--accent); }
+    </style>
+  </head>
+  <body>
+    <canvas id="bg-canvas"></canvas>
+    <div class="reveal">
+      <div class="slides">
+
+        <!-- Cover -->
+        <section data-background-gradient="radial-gradient(900px 600px at 50% 20%, rgba(91,140,255,0.28), transparent), linear-gradient(160deg,#070b16,#0c1224)">
+          <div class="cover">
+            <div class="logo-orbit"><div class="ring"></div><div class="ring r2"></div><div class="sat"></div><div class="core"></div></div>
+            <div class="kicker">Automation · Jira · Kiro</div>
+            <h1><span class="grad">Jira → Kiro Watcher</span></h1>
+            <p class="sub">Dari "geser subtask" menjadi instruksi kerja siap-pakai untuk Kiro</p>
+            <div class="pill">Node.js · TypeScript · Jira REST v2</div>
+            <div class="presenter">Gladiator &nbsp;·&nbsp; QTP</div>
+          </div>
+        </section>
+
+        <!-- Agenda -->
+        <section>
+          <span class="eyebrow"><span class="dot"></span> Agenda</span>
+          <h2>Topic Bahasan</h2>
+          <div class="cards c3">
+            <div class="card fragment fade-up"><span class="ic">🎯</span><h3>Masalah</h3><p>Kenapa ini perlu dibuat</p></div>
+            <div class="card fragment fade-up"><span class="ic">💡</span><h3>Solusi</h3><p>Ide &amp; prinsip desain</p></div>
+            <div class="card fragment fade-up"><span class="ic">🔄</span><h3>Cara kerja</h3><p>Alur end-to-end</p></div>
+            <div class="card fragment fade-up"><span class="ic">🏗️</span><h3>Arsitektur</h3><p>Komponen teknis</p></div>
+            <div class="card fragment fade-up"><span class="ic">▶️</span><h3>Demo</h3><p>Skenario langsung</p></div>
+            <div class="card fragment fade-up"><span class="ic">🧭</span><h3>Trade-off &amp; Roadmap</h3><p>Batasan &amp; rencana</p></div>
+          </div>
+        </section>
+
+        <!-- Divider 01 -->
+        <section data-background-gradient="linear-gradient(160deg,#070b16,#141b33)">
+          <span class="eyebrow"><span class="dot"></span> Bagian 01</span>
+          <h1 class="grad">Latar Belakang<br/>&amp; Masalah</h1>
+        </section>
+
+        <section>
+          <span class="eyebrow"><span class="dot"></span> Masalah</span>
+          <h2>Deja Vu Tiap Subtask 🔁</h2>
+          <p>Kalau ngoding manual, tiap mulai subtask developer mengulang langkah yang sama:</p>
+          <ol>
+            <li class="fragment fade-left">Buka Jira, cari subtask yang mau dikerjakan</li>
+            <li class="fragment fade-left">Baca <em>story description</em> &amp; <em>acceptance criteria</em></li>
+            <li class="fragment fade-left">Pahami konteks &amp; struktur repo dari awal</li>
+            <li class="fragment fade-left">Menyusun konteks jadi <em>prompt</em> untuk AI assistant</li>
+            <li class="fragment fade-left">Copy-paste manual bolak-balik Jira ↔ editor</li>
+            <li class="fragment fade-left">Ulangi dari langkah 1 untuk subtask berikutnya…</li>
+          </ol>
+          <blockquote class="fragment"><strong>Akibatnya:</strong> berulang, makan waktu, rawan konteks terlewat, dan tidak konsisten antar developer.</blockquote>
+        </section>
+
+        <!-- Divider 02 -->
+        <section data-background-gradient="linear-gradient(160deg,#070b16,#141b33)">
+          <span class="eyebrow"><span class="dot"></span> Bagian 02</span>
+          <h1 class="grad">Ide Solusi</h1>
+        </section>
+
+        <section>
+          <span class="eyebrow"><span class="dot"></span> Solusi</span>
+          <h2>Auto-Bridge Jira → Kiro</h2>
+          <blockquote>Saat subtask <em>dipindah ke "In Progress"</em>, konteks Jira otomatis tersedia sebagai task file terstruktur di dalam repo — siap dikerjakan Kiro.</blockquote>
+          <div class="cards c2" style="margin-top:22px">
+            <div class="card accent fragment zoom-in"><span class="ic">🖱️</span><h3>Step 1</h3><p>Pindah status subtask — aksi yang memang sudah biasa dilakukan.</p></div>
+            <div class="card accent fragment zoom-in"><span class="ic">🤖</span><h3>Step 2</h3><p>Buka task file, minta Kiro mengerjakannya. Tanpa copy-paste.</p></div>
+          </div>
+        </section>
+
+        <section>
+          <span class="eyebrow"><span class="dot"></span> Prinsip</span>
+          <h2>Empat prinsip</h2>
+          <div class="cards c2">
+            <div class="card fragment fade-up"><span class="ic">⚡</span><h3>Trigger tanpa langkah baru</h3><p>Pindah status yang sudah rutin, bukan aksi tambahan.</p></div>
+            <div class="card fragment fade-up"><span class="ic">🧩</span><h3>Konteks terstruktur</h3><p>Title + description + AC + metadata dalam satu file.</p></div>
+            <div class="card fragment fade-up"><span class="ic">🛡️</span><h3>Developer pegang kendali</h3><p>Tanpa commit otomatis.</p></div>
+            <div class="card fragment fade-up"><span class="ic">📄</span><h3>Dapat diinspeksi</h3><p>Kontraknya cuma sebuah file <code>.md</code>.</p></div>
+          </div>
+        </section>
+
+        <!-- Divider 03 -->
+        <section data-background-gradient="linear-gradient(160deg,#070b16,#141b33)">
+          <span class="eyebrow"><span class="dot"></span> Bagian 03</span>
+          <h1 class="grad">Cara Kerja</h1>
+        </section>
+
+        <section>
+          <span class="eyebrow"><span class="dot"></span> Alur end-to-end</span>
+          <h2>Dari pindah status ke kode</h2>
+          <div class="steps">
+            <div class="step fragment fade-left"><span class="num">1</span> Pindah subtask ke <em>"In Progress"</em></div>
+            <div class="step fragment fade-left"><span class="num">2</span> Watcher (polling tiap 30s) mendeteksi transisi</div>
+            <div class="step fragment fade-left"><span class="num">3</span> Ambil konteks story: description, acceptance criteria, metadata</div>
+            <div class="step fragment fade-left"><span class="num">4</span> Tulis <code>.kiro/tasks/&lt;KEY&gt;.md</code> di repo target</div>
+            <div class="step fragment fade-left"><span class="num">5</span> Kiro membaca file → implementasi kode <strong>(tanpa commit)</strong></div>
+            <div class="step fragment fade-left"><span class="num">6</span> Developer review &amp; commit sendiri</div>
+          </div>
+        </section>
+
+        <section>
+          <span class="eyebrow"><span class="dot"></span> Output</span>
+          <h2>Isi task file</h2>
+          <pre><code class="language-markdown"># Task: [FE] Added filter suspend on table history ift
+
+## Jira Reference
+| Subtask | NQLA-70940 — [FE] Added filter suspend... |
+| Story   | NQLA-68834 — Sebagai Qlola, saya ingin... |
+| Sprint  | 15 - Gladiator Sprint 29  |  Story Points | 3 |
+
+## Subtask Title (fokus pekerjaan)
+[FE] Added filter suspend on table history ift
+
+## Story Description      ## Acceptance Criteria
+...                       ...
+
+## Instructions for Kiro
+1. Pahami konteks repo...    5. JANGAN commit/push.</code></pre>
+          <blockquote>Satu file = satu prompt lengkap &amp; konsisten.</blockquote>
+        </section>
+
+        <!-- Divider 04 -->
+        <section data-background-gradient="linear-gradient(160deg,#070b16,#141b33)">
+          <span class="eyebrow"><span class="dot"></span> Bagian 04</span>
+          <h1 class="grad">Arsitektur Teknis</h1>
+        </section>
+
+        <section>
+          <span class="eyebrow"><span class="dot"></span> Angka</span>
+          <h2>Sistem dalam sekilas</h2>
+          <div class="stats">
+            <div class="stat fragment zoom-in"><div class="n grad" data-count="6">6</div><div class="l">Core modules</div></div>
+            <div class="stat fragment zoom-in"><div class="n grad" data-count="30">30</div><div class="l">Polling interval (s)</div></div>
+            <div class="stat fragment zoom-in"><div class="n grad" data-count="0">0</div><div class="l">Auto commits</div></div>
+          </div>
+          <blockquote class="fragment" style="margin-top:22px">Ringan, tanpa server, tanpa database — cukup satu proses Node.js.</blockquote>
+        </section>
+
+        <section>
+          <span class="eyebrow"><span class="dot"></span> Komponen</span>
+          <h2>Modul &amp; tanggung jawab</h2>
+          <table>
+            <thead><tr><th>Modul</th><th>Tanggung jawab</th></tr></thead>
+            <tbody>
+              <tr><td><code>watcher.ts</code></td><td>Loop polling + orkestrasi</td></tr>
+              <tr><td><code>jira.ts</code></td><td>Client Jira REST v2 + ekstraksi field</td></tr>
+              <tr><td><code>state.ts</code></td><td>Anti-dobel (lacak status diproses)</td></tr>
+              <tr><td><code>taskFile.ts</code></td><td>Susun &amp; tulis file task <code>.md</code></td></tr>
+              <tr><td><code>executor.ts</code></td><td>Panggil Kiro CLI (opsional)</td></tr>
+              <tr><td><code>config.ts</code></td><td>Muat &amp; validasi <code>.env</code></td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section>
+          <span class="eyebrow"><span class="dot"></span> Diagram</span>
+          <h2>Aliran data</h2>
+          <div class="flow">
+            <div class="flow-node n-jira fragment fade-up">
+              <div class="fic">🗂️</div>
+              <div class="ft">Jira DC</div>
+              <div class="fd">Subtask + Story induk</div>
+            </div>
+            <div class="flow-conn fragment fade-in">
+              <div class="lbl">poll (REST)</div>
+              <div class="arrow"><span class="pulse"></span></div>
+            </div>
+            <div class="flow-node n-watch fragment fade-up">
+              <div class="fic">⚙️</div>
+              <div class="ft">Watcher</div>
+              <div class="fd">deteksi transisi → susun konteks</div>
+            </div>
+            <div class="flow-conn fragment fade-in">
+              <div class="lbl">write .md</div>
+              <div class="arrow"><span class="pulse"></span></div>
+            </div>
+            <div class="flow-node n-repo fragment fade-up">
+              <div class="fic">📄</div>
+              <div class="ft">Target repo</div>
+              <div class="fd">.kiro/tasks/&lt;KEY&gt;.md</div>
+            </div>
+            <div class="flow-conn fragment fade-in">
+              <div class="lbl">read</div>
+              <div class="arrow"><span class="pulse"></span></div>
+            </div>
+            <div class="flow-node n-kiro fragment fade-up">
+              <div class="fic">🤖</div>
+              <div class="ft">Kiro</div>
+              <div class="fd">ubah kode (tanpa commit)</div>
+            </div>
+          </div>
+          <div class="flow-caption fragment">
+            <span class="chip">⤳ Opsional: bila AUTO_EXECUTE=true, watcher memanggil kiro-cli langsung</span>
+          </div>
+        </section>
+
+        <section>
+          <span class="eyebrow"><span class="dot"></span> Keputusan</span>
+          <h2>Kenapa polling, bukan webhook?</h2>
+          <table>
+            <thead><tr><th></th><th>Webhook</th><th>Polling ✅</th></tr></thead>
+            <tbody>
+              <tr><td>Perlu admin Jira</td><td>Ya</td><td><em>Tidak</em></td></tr>
+              <tr><td>Perlu public endpoint</td><td>Ya</td><td><em>Tidak</em></td></tr>
+              <tr><td>Jalan dari laptop</td><td>Sulit</td><td><em>Bisa</em></td></tr>
+              <tr><td>Latency</td><td>Instan</td><td>Delay ≤ interval</td></tr>
+            </tbody>
+          </table>
+          <blockquote>Di lingkungan korporat tanpa akses admin, <strong>polling lebih praktis</strong>.</blockquote>
+        </section>
+
+        <!-- Divider 05 -->
+        <section data-background-gradient="linear-gradient(160deg,#070b16,#141b33)">
+          <span class="eyebrow"><span class="dot"></span> Bagian 05</span>
+          <h1 class="grad">Demo</h1>
+        </section>
+
+        <section>
+          <span class="eyebrow"><span class="dot"></span> Demo</span>
+          <h2>Skenario langsung</h2>
+          <div class="steps">
+            <div class="step fragment fade-left"><span class="num">1</span><code>npm run check</code> — verifikasi koneksi &amp; lihat status</div>
+            <div class="step fragment fade-left"><span class="num">2</span><code>npm run dev</code> — watcher mulai polling</div>
+            <div class="step fragment fade-left"><span class="num">3</span>Pindah subtask ke <em>In Progress</em> di Jira</div>
+            <div class="step fragment fade-left"><span class="num">4</span>Tunggu ≤ 30s → file <code>&lt;KEY&gt;.md</code> muncul</div>
+            <div class="step fragment fade-left"><span class="num">5</span>Buka repo di Kiro → "kerjakan task ini"</div>
+          </div>
+          <blockquote class="fragment" style="margin-top:16px">Bonus: hapus file <code>.md</code> → watcher otomatis meng-generate ulang.</blockquote>
+        </section>
+
+        <!-- Divider 06 -->
+        <section data-background-gradient="linear-gradient(160deg,#070b16,#141b33)">
+          <span class="eyebrow"><span class="dot"></span> Bagian 06</span>
+          <h1 class="grad">Keputusan Desain</h1>
+        </section>
+
+        <section>
+          <span class="eyebrow"><span class="dot"></span> Keputusan</span>
+          <h2>Empat keputusan kunci</h2>
+          <div class="cards c2">
+            <div class="card fragment fade-up"><span class="ic">🛡️</span><h3>Tanpa commit otomatis</h3><p>Developer pengambil keputusan akhir.</p></div>
+            <div class="card fragment fade-up"><span class="ic">📄</span><h3>Task file sebagai kontrak</h3><p>Sederhana, human-readable, versionable.</p></div>
+            <div class="card fragment fade-up"><span class="ic">🔁</span><h3>Anti-duplikat + regenerate</h3><p>Ditulis sekali; hapus file = trigger ulang.</p></div>
+            <div class="card fragment fade-up"><span class="ic">1️⃣</span><h3>1 watcher = 1 repo</h3><p>Sesuai pola "1 feature = 1 repo".</p></div>
+          </div>
+        </section>
+
+        <section>
+          <span class="eyebrow"><span class="dot"></span> Pelajaran</span>
+          <h2>Kiro Hook tidak cocok di sini</h2>
+          <p>Pendekatan awal memakai hook <code>PostFileCreate</code>.</p>
+          <blockquote class="fragment"><strong>Ternyata tidak jalan</strong> — dokumentasi resmi Kiro: file hook hanya ter-trigger untuk file yang dibuat <em>agent Kiro sendiri</em>, bukan proses eksternal.</blockquote>
+          <blockquote class="fragment"><strong>Solusi:</strong> balik arahnya — watcher yang <em>memanggil</em> Kiro (CLI headless). Verifikasi asumsi ke dokumentasi resmi menghemat waktu.</blockquote>
+        </section>
+
+        <!-- Divider 07 -->
+        <section data-background-gradient="linear-gradient(160deg,#070b16,#141b33)">
+          <span class="eyebrow"><span class="dot"></span> Bagian 07</span>
+          <h1 class="grad">Trade-off &amp; Roadmap</h1>
+        </section>
+
+        <section>
+          <span class="eyebrow"><span class="dot"></span> Keterbatasan</span>
+          <h2>Jujur soal batasan</h2>
+          <ul>
+            <li class="fragment fade-left">Delay polling: deteksi maksimal setelah 1 interval (default 30s)</li>
+            <li class="fragment fade-left">Batas 100 subtask per query → persempit JQL bila perlu</li>
+            <li class="fragment fade-left">Ekstraksi AC best-effort → tergantung penamaan field di Jira</li>
+            <li class="fragment fade-left">Mode otomatis butuh Kiro CLI + auth — <em>mode semi-otomatis tetap andal</em></li>
+            <li class="fragment fade-left">1 instance = 1 repo → banyak repo butuh banyak instance</li>
+          </ul>
+        </section>
+
+        <section>
+          <span class="eyebrow"><span class="dot"></span> Roadmap</span>
+          <h2>Pengembangan lanjutan</h2>
+          <div class="cards c2">
+            <div class="card fragment fade-up"><span class="ic">🎯</span><h3>Filter status di JQL</h3><p>Query lebih ringan &amp; tepat sasaran.</p></div>
+            <div class="card fragment fade-up"><span class="ic">🗂️</span><h3>Multi-repo</h3><p>Satu instance, mapping via label/component.</p></div>
+            <div class="card fragment fade-up"><span class="ic">🔍</span><h3>Ekstraksi AC presisi</h3><p>Setelah field AC teridentifikasi.</p></div>
+            <div class="card fragment fade-up"><span class="ic">🔔</span><h3>Notifikasi</h3><p>Info ke chat saat task file dibuat.</p></div>
+          </div>
+        </section>
+
+        <!-- Closing -->
+        <section data-background-gradient="radial-gradient(900px 600px at 50% 40%, rgba(168,85,247,0.28), transparent), linear-gradient(160deg,#070b16,#0c1224)">
+          <div class="cover">
+            <div class="kicker">Terima kasih</div>
+            <h1 class="grad">Q &amp; A</h1>
+            <p class="sub">Dokumentasi lengkap: <code>docs/DOCUMENTATION.md</code></p>
+            <div class="pill">Jira → Kiro Watcher</div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+    <div class="brand-footer"><span class="badge"></span> Jira → Kiro Watcher</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/highlight.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/notes/notes.js"></script>
+    <script>
+      Reveal.initialize({
+        hash: true,
+        center: false,
+        slideNumber: 'c/t',
+        width: 1280,
+        height: 760,
+        margin: 0.06,
+        transition: 'convex',
+        backgroundTransition: 'fade',
+        controls: true,
+        progress: true,
+        plugins: [RevealHighlight, RevealNotes],
+      });
+
+      /* ---- Count-up animation for stats ---- */
+      Reveal.on('fragmentshown', (e) => {
+        const el = e.fragment.querySelector?.('[data-count]');
+        if (!el) return;
+        const target = parseInt(el.getAttribute('data-count'), 10);
+        let cur = 0; const dur = 700; const t0 = performance.now();
+        const tick = (t) => {
+          const p = Math.min(1, (t - t0) / dur);
+          el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+          if (p < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+
+      /* ---- Particle background ---- */
+      (function () {
+        const c = document.getElementById('bg-canvas');
+        const ctx = c.getContext('2d');
+        let w, h, pts;
+        const N = 60;
+        function resize() {
+          w = c.width = window.innerWidth; h = c.height = window.innerHeight;
+          pts = Array.from({ length: N }, () => ({
+            x: Math.random() * w, y: Math.random() * h,
+            vx: (Math.random() - 0.5) * 0.35, vy: (Math.random() - 0.5) * 0.35,
+            r: Math.random() * 1.8 + 0.6,
+          }));
+        }
+        function draw() {
+          ctx.clearRect(0, 0, w, h);
+          for (let i = 0; i < N; i++) {
+            const p = pts[i];
+            p.x += p.vx; p.y += p.vy;
+            if (p.x < 0 || p.x > w) p.vx *= -1;
+            if (p.y < 0 || p.y > h) p.vy *= -1;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(120,160,255,0.55)'; ctx.fill();
+            for (let j = i + 1; j < N; j++) {
+              const q = pts[j]; const dx = p.x - q.x, dy = p.y - q.y;
+              const d2 = dx * dx + dy * dy;
+              if (d2 < 16000) {
+                ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y);
+                ctx.strokeStyle = 'rgba(120,160,255,' + (0.14 * (1 - d2 / 16000)) + ')';
+                ctx.lineWidth = 1; ctx.stroke();
+              }
+            }
+          }
+          requestAnimationFrame(draw);
+        }
+        window.addEventListener('resize', resize);
+        resize(); draw();
+      })();
+    </script>
+  </body>
+</html>

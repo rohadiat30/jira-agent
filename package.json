@@ -1,0 +1,30 @@
+{
+  "name": "jira-kiro-watcher",
+  "version": "1.0.0",
+  "description": "Memantau subtask Jira via polling; saat subtask digeser ke status trigger, menulis file task instruksi ke repo target untuk dieksekusi Kiro.",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "check": "tsx src/check.ts"
+  },
+  "keywords": [
+    "jira",
+    "kiro",
+    "watcher",
+    "automation"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "undici": "^6.19.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  }
+}
