@@ -55,7 +55,7 @@ kiro-cli chat --no-interactive ...  --> Kiro eksekusi kode di repo target
    TRIGGER_STATUS=In Development
    POLL_INTERVAL_SECONDS=30
 
-   TARGET_REPO_PATH=C:\Users\rohad\Documents\work\qcash-ui-fund-transfer
+   TARGET_REPO_PATH=<PATH_REPO>
    TASK_OUTPUT_DIR=.kiro/tasks
    ```
 
