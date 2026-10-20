@@ -47,7 +47,7 @@ kiro-cli chat --no-interactive ...  --> Kiro eksekusi kode di repo target
    ```env
    JIRA_BASE_URL=https://jira.bri.co.id
    JIRA_TOKEN=<PAT_ANDA>
-   JIRA_USERNAME=90186003
+   JIRA_USERNAME=<USERNAME_ANDA>
    JIRA_AUTH_TYPE=bearer
    JIRA_SKIP_SSL=false
 
